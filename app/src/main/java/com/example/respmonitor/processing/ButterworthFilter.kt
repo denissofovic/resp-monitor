@@ -15,6 +15,8 @@ class ButterworthFilter(fg: Float, fs:Float = 100f) {
     private var y1 = 0f
     private var y2 = 0f
 
+    // Ovo je autokorelator branch
+
     init {
         val omega = tan(Math.PI * fg / fs).toFloat()
         val sqrt2 = sqrt(2.0).toFloat()
