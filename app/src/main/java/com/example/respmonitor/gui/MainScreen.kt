@@ -1,13 +1,11 @@
 package com.example.respmonitor.gui
 
-import CsvLogger
 import GyroSample
 import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -24,8 +22,6 @@ import androidx.compose.ui.unit.sp
 import com.example.respmonitor.processing.ButterworthFilter
 import com.example.respmonitor.processing.Interpolator
 import com.example.respmonitor.processing.SignalAnalyzer
-import com.example.respmonitor.sensor.AccelSample
-import com.example.respmonitor.sensor.AccelerometerManager
 import com.example.respmonitor.sensor.GyroscopeManager
 import com.example.respmonitor.util.FloatCircularBuffer
 import kotlinx.coroutines.Dispatchers
@@ -36,39 +32,27 @@ import kotlinx.coroutines.withContext
 @Composable
 fun MainScreen(
     gyroManager: GyroscopeManager,
-    accelerometerManager: AccelerometerManager,
     gyroInterpolator: Interpolator<GyroSample>,
-    accelInterpolator: Interpolator<AccelSample>,
     filterPitch: ButterworthFilter,
     filterRoll: ButterworthFilter,
     filterYaw: ButterworthFilter,
-    filterX: ButterworthFilter,
-    filterY: ButterworthFilter,
-    filterZ: ButterworthFilter,
     signalAnalyzer: SignalAnalyzer
 ) {
+
     val context = LocalContext.current
     val signalBuffer = remember { FloatCircularBuffer(3000)}
-    var unfilteredGyroSample by remember { mutableStateOf<GyroSample?>(null) }
-    var filteredGyroSample by remember { mutableStateOf<GyroSample?>(null) }
-    var unfilteredAccelSample by remember { mutableStateOf<AccelSample?>(null) }
-    var filteredAccelSample by remember { mutableStateOf<AccelSample?>(null) }
     var isRecording by remember { mutableStateOf(false) }
     var breathsPerMinute by remember { mutableStateOf<Float?>(null) }
     var isCalculating by remember { mutableStateOf(false) }
 
 
 
-    DisposableEffect(gyroManager, gyroInterpolator, accelerometerManager, accelInterpolator) {
+    DisposableEffect(gyroManager, gyroInterpolator) {
 
         gyroManager.onGyroSample = { sample: GyroSample ->
             gyroInterpolator.onNewSample(sample)
         }
 
-
-        accelerometerManager.onAccelSample = { accelSample : AccelSample ->
-            accelInterpolator.onNewSample(accelSample)
-        }
 
         gyroInterpolator.onInterpolatedSample = { g ->
 
@@ -86,50 +70,16 @@ fun MainScreen(
                 yaw = filterYaw.process(g.yaw)
             )
 
-            Log.d("GYRO_DATA", "Pitch=${filteredGyro.pitch}, Roll=${filteredGyro.roll}, Yaw=${filteredGyro.yaw}")
-
-
-
             // Dodavanje vrijednosti u signal buffer
             signalBuffer.add(filteredGyro.pitch)
 
-            unfilteredGyroSample = unfilteredGyro
-            filteredGyroSample = filteredGyro
-
-        }
-
-
-        accelInterpolator.onInterpolatedSample = { a ->
-
-            val unfilteredAccel = AccelSample(
-                timestampNs = a.timestampNs,
-                x = a.x,
-                y = a.y,
-                z = a.z
-            )
-
-            val filteredAccel = AccelSample(
-                timestampNs = a.timestampNs,
-                x = filterX.process(a.x),
-                y = filterY.process(a.y),
-                z = filterZ.process(a.z)
-            )
-
-            Log.d("ACCEL_DATA", "X=${filteredAccel.x}, Y=${filteredAccel.y}, Z=${filteredAccel.z}")
-
-
-
-            unfilteredAccelSample = unfilteredAccel
-            filteredAccelSample = filteredAccel
 
         }
 
         gyroManager.start()
-        accelerometerManager.start()
 
         onDispose {
             gyroManager.stop()
-            accelerometerManager.stop()
         }
     }
 
@@ -164,36 +114,6 @@ fun MainScreen(
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = unfilteredGyroSample?.let {
-                "Unfiltered \n Pitch=${it.pitch} \n Roll=${it.roll} \n Yaw=${it.yaw}"
-            } ?: ""
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = filteredGyroSample?.let {
-                "Filtered \n Pitch=${it.pitch} \n Roll=${it.roll} \n Yaw=${it.yaw}"
-            } ?: ""
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-
-        Text(
-            text = unfilteredAccelSample?.let {
-                "Unfiltered \n X=${it.x} \n Y=${it.y} \n Z=${it.z}"
-            } ?: ""
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = filteredAccelSample?.let {
-                "Filtered \n X=${it.x} \n Y=${it.y} \n Z=${it.z}"
-            } ?: ""
-        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -202,9 +122,6 @@ fun MainScreen(
             fontSize = 48.sp,
             fontWeight = FontWeight.Bold
         )
-
-
-
 
     }
 }
