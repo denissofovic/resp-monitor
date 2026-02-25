@@ -48,8 +48,6 @@ fun MainScreen(
     signalAnalyzer: SignalAnalyzer
 ) {
     val context = LocalContext.current
-    val gyroLogger = remember { CsvLogger(context, "gyro") }
-    val accelLogger = remember { CsvLogger(context, "accel") }
     val signalBuffer = remember { FloatCircularBuffer(3000)}
     var unfilteredGyroSample by remember { mutableStateOf<GyroSample?>(null) }
     var filteredGyroSample by remember { mutableStateOf<GyroSample?>(null) }
@@ -98,8 +96,6 @@ fun MainScreen(
             unfilteredGyroSample = unfilteredGyro
             filteredGyroSample = filteredGyro
 
-            //if (isRecording) gyroLogger.addSample(unfilteredGyro, filteredGyro)
-
         }
 
 
@@ -126,9 +122,6 @@ fun MainScreen(
             unfilteredAccelSample = unfilteredAccel
             filteredAccelSample = filteredAccel
 
-             if (isRecording) accelLogger.addSample(unfilteredAccel, filteredAccel)
-
-
         }
 
         gyroManager.start()
@@ -147,22 +140,26 @@ fun MainScreen(
 
                 val result = withContext(Dispatchers.Default) {
                     try {
-
-                        val bpm = signalAnalyzer.findRespiratoryRate( signalBuffer, 100f,  minBpm = 6f, maxBpm = 40f)
-
-                        return bpm
-
+                        signalAnalyzer.findRespiratoryRate(
+                            signalBuffer = signalBuffer,
+                            samplingRate = 100f,
+                            minBpm = 6f,
+                            maxBpm = 40f
+                        )
                     } catch (e: Exception) {
-                        Log.e("MainScreen", "Error calculating RR: ${e.message}")
+                        Log.e("MainScreen", "Error calculating RR: ${e.message}", e)
                         null
                     }
                 }
 
-                breathsPerMinute = result
+                result?.let { bpm ->
+                    breathsPerMinute = bpm
+                }
+
                 isCalculating = false
             }
 
-            delay(2000)
+            delay(500)
         }
     }
 
@@ -198,7 +195,7 @@ fun MainScreen(
             } ?: ""
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Text(
             text = breathsPerMinute?.let { "Breathing rate: %.1f bpm".format(it) } ?: "Calculating...",
@@ -207,19 +204,6 @@ fun MainScreen(
         )
 
 
-        Button(onClick = {
-            if (!isRecording) {
-                //gyroLogger.startRecording()
-                accelLogger.startRecording()
-                isRecording = true
-            } else {
-                //gyroLogger.stopAndSave()
-                accelLogger.stopAndSave()
-                isRecording = false
-            }
-        }) {
-            Text(if (isRecording) "Stop " else "Start ")
-        }
 
 
     }
