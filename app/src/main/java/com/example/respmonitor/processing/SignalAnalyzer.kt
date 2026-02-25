@@ -1,79 +1,115 @@
 package com.example.respmonitor.processing
 
 import com.example.respmonitor.util.FloatCircularBuffer
+import org.jtransforms.fft.FloatFFT_1D
+import kotlin.math.*
 
 class SignalAnalyzer {
 
     /**
-     * Izračunava normalizovanu autokorelaciju
-     * ACF[0] = 1.0, ostale vrednosti su između -1 i 1
+     * Pronalazi respiratornu frekvenciju korištenjem FFT analize
+     *
+     * @param signalBuffer Buffer sa pitch gyroscope podacima
+     * @param samplingRate Sampling rate u Hz (npr. 100Hz)
+     * @param minBpm Minimalni broj udisaja po minuti (default: 6)
+     * @param maxBpm Maksimalni broj udisaja po minuti (default: 40)
+     * @return Respiratorna frekvencija u BPM ili null ako nije pronađena
      */
-    fun calculateAc(signalBuffer: FloatCircularBuffer): FloatArray {
+    fun findRespiratoryRate(
+        signalBuffer: FloatCircularBuffer,
+        samplingRate: Float,
+        minBpm: Float = 6f,
+        maxBpm: Float = 40f
+    ): Float? {
         val signal = signalBuffer.toFloatArray()
         val n = signal.size
 
-        // 1. Detrending - oduzmi srednju vrednost
+        if (n < 2) return null
+
+        // 1. Detrending - ukloni DC komponentu (srednju vrednost)
         val mean = signal.average().toFloat()
-        val centered = FloatArray(n) { signal[it] - mean }
+        val detrended = FloatArray(n) { signal[it] - mean }
 
-        // 2. Autokorelacija
-        val result = FloatArray(n)
+        // 2. Primijeni Hanning window da smanjiš spectral leakage
+        val windowed = applyHanningWindow(detrended)
 
-        // Variance (za normalizaciju)
-        var variance = 0f
-        for (i in 0 until n) {
-            variance += centered[i] * centered[i]
+        // 3. Zero-padding do najbližeg power of 2 za efikasnost
+        val fftSize = nextPowerOfTwo(n)
+        val fftInput = FloatArray(fftSize) { if (it < n) windowed[it] else 0f }
+
+        // 4. Izračunaj FFT korištenjem JTransforms
+        val fft = FloatFFT_1D(fftSize.toLong())
+        fft.realForward(fftInput)
+
+        // 5. Izračunaj power spectrum (magnitude squared)
+        // JTransforms realForward format: [r0, r1, i1, r2, i2, ..., rn/2]
+        val powerSpectrum = FloatArray(fftSize / 2 + 1)
+
+        // DC component (index 0)
+        powerSpectrum[0] = fftInput[0] * fftInput[0]
+
+        // Nyquist frequency (index n/2)
+        if (fftSize % 2 == 0) {
+            powerSpectrum[fftSize / 2] = fftInput[1] * fftInput[1]
         }
 
-        // Ako nema varijanse, signal je konstanta
-        if (variance == 0f) {
-            result[0] = 1f
-            return result
+        // Ostale frekvencije
+        for (i in 1 until fftSize / 2) {
+            val real = fftInput[2 * i]
+            val imag = fftInput[2 * i + 1]
+            powerSpectrum[i] = real * real + imag * imag
         }
 
-        // Računaj autokorelaciju
-        for (lag in 0 until n) {
-            var sum = 0f
-            for (i in 0 until n - lag) {
-                sum += centered[i] * centered[i + lag]
+        // 6. Konvertuj BPM range u Hz
+        val minFreq = minBpm / 60f
+        val maxFreq = maxBpm / 60f
+
+        // 7. Konvertuj frekvencije u FFT bin indekse
+        val minIndex = (minFreq * fftSize / samplingRate).toInt().coerceAtLeast(1)
+        val maxIndex = (maxFreq * fftSize / samplingRate).toInt().coerceAtMost(powerSpectrum.size - 1)
+
+        if (minIndex >= maxIndex) return null
+
+        // 8. Pronađi bin sa maksimalnom snagom u validnom rasponu
+        var maxPower = 0f
+        var peakIndex = -1
+
+        for (i in minIndex..maxIndex) {
+            if (powerSpectrum[i] > maxPower) {
+                maxPower = powerSpectrum[i]
+                peakIndex = i
             }
-            // Normalizuj sa variance (ACF[0] će biti 1.0)
-            result[lag] = sum / variance
         }
 
-        return result
+        if (peakIndex == -1) return null
+
+        // 9. Konvertuj FFT bin index nazad u frekvenciju
+        val frequency = peakIndex * samplingRate / fftSize
+
+        // 10. Konvertuj Hz u BPM
+        return frequency * 60f
     }
 
     /**
-     * Pronalazi prvi **značajan** lokalni maksimum u autokorelaciji
-     *
-     * @param ac Autokorelacija
-     * @param minLag Minimalni lag (npr. 150 = 40 bpm @ 100Hz)
-     * @param maxLag Maksimalni lag (npr. 1000 = 6 bpm @ 100Hz)
-     * @param minHeight Minimalna visina vrha (default 0.3 = 30% od ACF[0])
-     * @return Index vrha ili -1 ako nema validnog vrha
+     * Primjenjuje Hanning window funkciju na signal
+     * Smanjuje spectral leakage u FFT analizi
      */
-    fun findPeak( ac: FloatArray,  minLag: Int,  maxLag: Int,  minHeight: Float = 0.3f): Int {
-        if (minLag >= ac.size || maxLag >= ac.size) return -1
-
-        var maxVal = Float.MIN_VALUE
-        var maxIndex = -1
-
-        for (i in minLag until maxLag.coerceAtMost(ac.size - 1)) {
-
-            val isPeak = (i == minLag || ac[i] > ac[i - 1]) &&
-                    (i == ac.size - 1 || ac[i] > ac[i + 1])
-
-            if (isPeak && ac[i] > minHeight && ac[i] > maxVal) {
-                maxVal = ac[i]
-                maxIndex = i
-            }
+    private fun applyHanningWindow(signal: FloatArray): FloatArray {
+        val n = signal.size
+        return FloatArray(n) { i ->
+            val window = 0.5f * (1f - cos(2f * PI.toFloat() * i / (n - 1)))
+            signal[i] * window
         }
-
-        return maxIndex
     }
 
-
-
-    data class Peak(val index: Int, val value: Float)
+    /**
+     * Pronalazi najmanji power of 2 koji je veći ili jednak datom broju
+     */
+    private fun nextPowerOfTwo(n: Int): Int {
+        var power = 1
+        while (power < n) {
+            power = power shl 1 // Ekvivalentno power *= 2
+        }
+        return power
+    }
 }

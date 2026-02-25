@@ -147,21 +147,11 @@ fun MainScreen(
 
                 val result = withContext(Dispatchers.Default) {
                     try {
-                        val autoCorrelation = signalAnalyzer.calculateAc(signalBuffer)
 
-                        val peakLag = signalAnalyzer.findPeak(
-                            ac = autoCorrelation,
-                            minLag = 150,    // 40 bpm
-                            maxLag = 1000,   // 6 bpm
-                            minHeight = 0.3f // 30% threshold
-                             )
+                        val bpm = signalAnalyzer.findRespiratoryRate( signalBuffer, 100f,  minBpm = 6f, maxBpm = 40f)
 
-                        if (peakLag > 0) {
-                            val frequencyHz = 100f / peakLag
-                            frequencyHz * 60f
-                        } else {
-                            null
-                        }
+                        return bpm
+
                     } catch (e: Exception) {
                         Log.e("MainScreen", "Error calculating RR: ${e.message}")
                         null
