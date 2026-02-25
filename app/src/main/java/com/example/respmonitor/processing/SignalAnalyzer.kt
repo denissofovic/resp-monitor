@@ -44,15 +44,7 @@ class SignalAnalyzer {
         return result
     }
 
-    /**
-     * Pronalazi prvi **značajan** lokalni maksimum u autokorelaciji
-     *
-     * @param ac Autokorelacija
-     * @param minLag Minimalni lag (npr. 150 = 40 bpm @ 100Hz)
-     * @param maxLag Maksimalni lag (npr. 1000 = 6 bpm @ 100Hz)
-     * @param minHeight Minimalna visina vrha (default 0.3 = 30% od ACF[0])
-     * @return Index vrha ili -1 ako nema validnog vrha
-     */
+
     fun findPeak( ac: FloatArray,  minLag: Int,  maxLag: Int,  minHeight: Float = 0.3f): Int {
         if (minLag >= ac.size || maxLag >= ac.size) return -1
 
@@ -75,5 +67,4 @@ class SignalAnalyzer {
 
 
 
-    data class Peak(val index: Int, val value: Float)
 }
