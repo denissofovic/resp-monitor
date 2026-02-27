@@ -1,6 +1,5 @@
 package com.example.respmonitor.util
 
-import android.text.BoringLayout
 
 class FloatCircularBuffer(private val capacity: Int) {
 

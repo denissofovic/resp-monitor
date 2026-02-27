@@ -10,7 +10,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.currentComposer
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 @Composable
 fun MainScreen(
@@ -39,11 +43,11 @@ fun MainScreen(
     signalAnalyzer: SignalAnalyzer
 ) {
 
-    val context = LocalContext.current
     val signalBuffer = remember { FloatCircularBuffer(3000)}
-    var isRecording by remember { mutableStateOf(false) }
     var breathsPerMinute by remember { mutableStateOf<Float?>(null) }
     var isCalculating by remember { mutableStateOf(false) }
+    var lastValidBpm by remember { mutableFloatStateOf(0f) }
+    var lastUpdateTime by remember { mutableLongStateOf(0L) }
 
 
 
@@ -72,8 +76,6 @@ fun MainScreen(
 
             // Dodavanje vrijednosti u signal buffer
             signalBuffer.add(filteredGyro.pitch)
-
-
         }
 
         gyroManager.start()
@@ -97,21 +99,34 @@ fun MainScreen(
                             maxBpm = 40f
                         )
                     } catch (e: Exception) {
-                        Log.e("MainScreen", "Error calculating RR: ${e.message}", e)
                         null
                     }
                 }
 
                 result?.let { bpm ->
-                    breathsPerMinute = bpm
+                    if (signalAnalyzer.validateChange(lastValidBpm, lastUpdateTime, bpm)) {
+                        breathsPerMinute = bpm
+                        lastValidBpm = bpm
+                        lastUpdateTime = System.currentTimeMillis()
+                    }
                 }
 
+            }
                 isCalculating = false
             }
 
             delay(500)
-        }
     }
+
+
+    // ISCRTAVANJE GUI-A
+    DrawGui(breathsPerMinute)
+
+
+}
+
+@Composable
+fun DrawGui(breathsPerMinute : Float?){
 
     Column(modifier = Modifier.padding(16.dp)) {
 
@@ -124,4 +139,5 @@ fun MainScreen(
         )
 
     }
+
 }

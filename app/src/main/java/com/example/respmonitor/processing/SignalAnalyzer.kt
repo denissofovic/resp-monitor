@@ -2,6 +2,7 @@ package com.example.respmonitor.processing
 
 import com.example.respmonitor.util.FloatCircularBuffer
 import org.jtransforms.fft.FloatFFT_1D
+import kotlin.compareTo
 import kotlin.math.*
 
 class SignalAnalyzer {
@@ -67,6 +68,18 @@ class SignalAnalyzer {
         return frequency * 60f
     }
 
+    fun validateChange(lastValidBpm: Float, lastUpdateTime: Long, newBpm: Float): Boolean {
+        if (lastValidBpm == 0f) return true
+
+        val currentTime = System.currentTimeMillis()
+        val timeDelta = currentTime - lastUpdateTime
+
+        if (timeDelta >= 2000) return true
+
+        val bpmChange = abs(newBpm - lastValidBpm)
+        return bpmChange <= 10f
+    }
+
 
     private fun applyHanningWindow(signal: FloatArray): FloatArray {
         val n = signal.size
@@ -84,4 +97,6 @@ class SignalAnalyzer {
         }
         return power
     }
+
+
 }
