@@ -68,6 +68,8 @@ class SignalAnalyzer {
         return frequency * 60f
     }
 
+
+    // ZA SADA NIJE POTREBNA
     fun validateChange(lastValidBpm: Float, lastUpdateTime: Long, newBpm: Float): Boolean {
         if (lastValidBpm == 0f) return true
 

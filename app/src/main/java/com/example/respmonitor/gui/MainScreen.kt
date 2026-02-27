@@ -99,23 +99,35 @@ fun MainScreen(
                             maxBpm = 40f
                         )
                     } catch (e: Exception) {
+                        Log.e("MainScreen", "Error calculating RR: ${e.message}", e)
                         null
                     }
                 }
 
+
                 result?.let { bpm ->
-                    if (signalAnalyzer.validateChange(lastValidBpm, lastUpdateTime, bpm)) {
-                        breathsPerMinute = bpm
-                        lastValidBpm = bpm
-                        lastUpdateTime = System.currentTimeMillis()
+                    val currentBreaths = breathsPerMinute ?: 0f
+
+                    val alpha = if (currentBreaths == 0f) {
+                        1f
+                    } else {
+                        val change = abs(bpm - currentBreaths)
+                        when {
+                            change <= 3f -> 0.5f
+                            change <= 6f -> 0.3f
+                            change <= 10f -> 0.15f
+                            else -> 0.05f
+                        }
                     }
+
+                    breathsPerMinute = alpha * bpm + (1f - alpha) * currentBreaths
                 }
 
-            }
                 isCalculating = false
             }
 
             delay(500)
+        }
     }
 
 
