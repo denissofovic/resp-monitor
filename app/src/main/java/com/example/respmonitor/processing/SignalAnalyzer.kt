@@ -69,7 +69,7 @@ class SignalAnalyzer {
     }
 
 
-    // ZA SADA NIJE POTREBNA
+    // ZA SADA NIJE POTREBNA - MIGHT BE DEPRECATED
     fun validateChange(lastValidBpm: Float, lastUpdateTime: Long, newBpm: Float): Boolean {
         if (lastValidBpm == 0f) return true
 
@@ -80,6 +80,24 @@ class SignalAnalyzer {
 
         val bpmChange = abs(newBpm - lastValidBpm)
         return bpmChange <= 10f
+    }
+
+    fun calculateEMA(bpm : Float, currentBreaths : Float) : Float{
+        val alpha = if (currentBreaths == 0f) {
+            1f
+        } else {
+            val change = abs(bpm - currentBreaths)
+            when {
+                change <= 3f -> 0.5f
+                change <= 6f -> 0.3f
+                change <= 10f -> 0.15f
+                else -> 0.05f
+            }
+        }
+
+        val breathsPerMinute = alpha * bpm + (1f - alpha) * currentBreaths
+        return breathsPerMinute
+
     }
 
 

@@ -46,34 +46,19 @@ fun MainScreen(
     val signalBuffer = remember { FloatCircularBuffer(3000)}
     var breathsPerMinute by remember { mutableStateOf<Float?>(null) }
     var isCalculating by remember { mutableStateOf(false) }
-    var lastValidBpm by remember { mutableFloatStateOf(0f) }
-    var lastUpdateTime by remember { mutableLongStateOf(0L) }
-
-
 
     DisposableEffect(gyroManager, gyroInterpolator) {
-
         gyroManager.onGyroSample = { sample: GyroSample ->
             gyroInterpolator.onNewSample(sample)
         }
 
-
         gyroInterpolator.onInterpolatedSample = { g ->
-
-            val unfilteredGyro = GyroSample(
-                timestampNs = g.timestampNs,
-                pitch = g.pitch,
-                roll = g.roll,
-                yaw = g.yaw
-            )
-
             val filteredGyro = GyroSample(
                 timestampNs = g.timestampNs,
                 pitch = filterPitch.process(g.pitch),
                 roll = filterRoll.process(g.roll),
                 yaw = filterYaw.process(g.yaw)
             )
-
             // Dodavanje vrijednosti u signal buffer
             signalBuffer.add(filteredGyro.pitch)
         }
@@ -89,38 +74,17 @@ fun MainScreen(
         while (isActive) {
             if (signalBuffer.isFull() && !isCalculating) {
                 isCalculating = true
-
                 val result = withContext(Dispatchers.Default) {
                     try {
-                        signalAnalyzer.findRespiratoryRate(
-                            signalBuffer = signalBuffer,
-                            samplingRate = 100f,
-                            minBpm = 6f,
-                            maxBpm = 40f
-                        )
+                        signalAnalyzer.findRespiratoryRate(signalBuffer = signalBuffer, samplingRate = 100f, minBpm = 6f, maxBpm = 40f)
                     } catch (e: Exception) {
                         Log.e("MainScreen", "Error calculating RR: ${e.message}", e)
                         null
                     }
                 }
-
-
                 result?.let { bpm ->
                     val currentBreaths = breathsPerMinute ?: 0f
-
-                    val alpha = if (currentBreaths == 0f) {
-                        1f
-                    } else {
-                        val change = abs(bpm - currentBreaths)
-                        when {
-                            change <= 3f -> 0.5f
-                            change <= 6f -> 0.3f
-                            change <= 10f -> 0.15f
-                            else -> 0.05f
-                        }
-                    }
-
-                    breathsPerMinute = alpha * bpm + (1f - alpha) * currentBreaths
+                    breathsPerMinute = signalAnalyzer.calculateEMA(bpm, currentBreaths)
                 }
 
                 isCalculating = false
@@ -130,11 +94,8 @@ fun MainScreen(
         }
     }
 
-
     // ISCRTAVANJE GUI-A
     DrawGui(breathsPerMinute)
-
-
 }
 
 @Composable
