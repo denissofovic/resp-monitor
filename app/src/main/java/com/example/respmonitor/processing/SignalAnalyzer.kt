@@ -2,16 +2,10 @@ package com.example.respmonitor.processing
 
 import com.example.respmonitor.util.FloatCircularBuffer
 import org.jtransforms.fft.FloatFFT_1D
-import kotlin.compareTo
 import kotlin.math.*
 
 class SignalAnalyzer {
-    fun findRespiratoryRate(
-        signalBuffer: FloatCircularBuffer,
-        samplingRate: Float,
-        minBpm: Float = 6f,
-        maxBpm: Float = 40f
-    ): Float? {
+    fun findRespiratoryRate(signalBuffer: FloatCircularBuffer, samplingRate: Float, minBpm: Float = 6f, maxBpm: Float = 40f): Float? {
         val signal = signalBuffer.toFloatArray()
         val n = signal.size
 
@@ -20,15 +14,12 @@ class SignalAnalyzer {
         val mean = signal.average().toFloat()
         val detrended = FloatArray(n) { signal[it] - mean }
 
-        val windowed = applyHanningWindow(detrended)
-
+        val windowed = hanningWindow(detrended)
         val fftSize = nextPowerOfTwo(n)
         val fftInput = FloatArray(fftSize) { if (it < n) windowed[it] else 0f }
 
         val fft = FloatFFT_1D(fftSize.toLong())
         fft.realForward(fftInput)
-
-
         val powerSpectrum = FloatArray(fftSize / 2 + 1)
 
         powerSpectrum[0] = fftInput[0] * fftInput[0]
@@ -101,14 +92,13 @@ class SignalAnalyzer {
     }
 
 
-    private fun applyHanningWindow(signal: FloatArray): FloatArray {
+    private fun hanningWindow(signal: FloatArray): FloatArray {
         val n = signal.size
         return FloatArray(n) { i ->
             val window = 0.5f * (1f - cos(2f * PI.toFloat() * i / (n - 1)))
             signal[i] * window
         }
     }
-
 
     private fun nextPowerOfTwo(n: Int): Int {
         var power = 1
@@ -117,6 +107,5 @@ class SignalAnalyzer {
         }
         return power
     }
-
 
 }
