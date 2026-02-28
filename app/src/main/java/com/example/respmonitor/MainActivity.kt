@@ -35,14 +35,7 @@ class MainActivity : ComponentActivity() {
         )
 
 
-        setContent {
-            MainScreen(gyroscopeManager,
-                                    gyroInterpolator,
-                                    filterPitch,
-                                    filterRoll,
-                                    filterYaw,
-                                    signalAnalyzer
-            )}
+        setContent { MainScreen(gyroscopeManager,gyroInterpolator,filterPitch,filterRoll,filterYaw,signalAnalyzer)}
     }
 
 
