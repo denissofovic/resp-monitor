@@ -4,6 +4,7 @@ plugins {
 }
 
 android {
+
     namespace = "com.example.respmonitor"
     compileSdk {
         version = release(36)
@@ -33,6 +34,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        viewBinding = true
         compose = true
     }
 }
