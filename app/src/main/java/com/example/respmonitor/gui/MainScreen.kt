@@ -35,13 +35,14 @@ fun MainScreen(
     filterPitch: ButterworthFilter,
     filterRoll: ButterworthFilter,
     filterYaw: ButterworthFilter,
-    signalAnalyzer: SignalAnalyzer
-) {
+    signalAnalyzer: SignalAnalyzer ) {
 
     val signalBuffer = remember { FloatCircularBuffer(3000)}
     var breathsPerMinute by remember { mutableStateOf<Float?>(null) }
     var isCalculating by remember { mutableStateOf(false) }
 
+
+    // DOBIJANJE SIGNALA SA GYROSCOPA -> INTERPOLACIJA I FILTRIRANJE
     DisposableEffect(gyroManager, gyroInterpolator) {
         gyroManager.onGyroSample = { sample: GyroSample ->
             gyroInterpolator.onNewSample(sample)
@@ -58,20 +59,23 @@ fun MainScreen(
             signalBuffer.add(filteredGyro.pitch)
         }
 
+        // POKRETANJE GYROSCOPEA
         gyroManager.start()
 
+        // ZAUSTAVLJANJE GYROSCOPEA PO ZATVARANJU APLIKACIJE
         onDispose {
             gyroManager.stop()
         }
     }
 
+    // OBRADA SIGNALA
     LaunchedEffect(Unit) {
         while (isActive) {
             if (signalBuffer.isFull() && !isCalculating) {
                 isCalculating = true
                 val result = withContext(Dispatchers.Default) {
                     try {
-                        signalAnalyzer.findRespiratoryRate(signalBuffer = signalBuffer, samplingRate = 100f, minBpm = 6f, maxBpm = 40f)
+                        signalAnalyzer.findRespiratoryRate(signalBuffer, 100f, 6f, 40f)
                     } catch (e: Exception) {
                         Log.e("MainScreen", "Error calculating RR: ${e.message}", e)
                         null
@@ -102,8 +106,8 @@ fun DrawGui(breathsPerMinute : Float?){
 
         Text(
             text = breathsPerMinute?.let { "Breathing rate: %.1f bpm".format(it) } ?: "Calculating...",
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Thin
         )
 
     }
