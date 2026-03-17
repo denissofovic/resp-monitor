@@ -1,27 +1,27 @@
 package com.example.respmonitor.sensor
 
-import GyroSample
+
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 
-class GyroscopeManager(
+class AccelerometerManager(
     context: Context
 ) : SensorEventListener {
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-    private val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
 
-    var onGyroSample: ((GyroSample) -> Unit)? = null
+    var onAccelSample: ((AccelSample) -> Unit)? = null
 
     fun start() {
         sensorManager.registerListener(
             this,
-            gyroscope,
+            accelerometer,
             SensorManager.SENSOR_DELAY_GAME
         )
     }
@@ -31,12 +31,12 @@ class GyroscopeManager(
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        onGyroSample?.invoke(
-            GyroSample(
+        onAccelSample?.invoke(
+            AccelSample(
                 timestampNs = event.timestamp,
-                pitch = event.values[0],
-                roll = event.values[1],
-                yaw = event.values[2]
+                x = event.values[0],
+                y = event.values[1],
+                z = event.values[2]
             )
         )
     }

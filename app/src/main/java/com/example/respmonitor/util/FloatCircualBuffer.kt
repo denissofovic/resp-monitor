@@ -25,5 +25,10 @@ class FloatCircularBuffer(private val capacity: Int) {
         return isFull
     }
 
+    fun clear() {
+        index = 0
+        buffer.fill(0f)
+    }
+
     fun toFloatArray(): FloatArray = toList().toFloatArray()
 }

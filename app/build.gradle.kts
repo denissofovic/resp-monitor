@@ -6,6 +6,13 @@ plugins {
 android {
 
     namespace = "com.example.respmonitor"
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     compileSdk {
         version = release(36)
     }
@@ -49,6 +56,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation("com.github.wendykierp:JTransforms:3.2")
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
