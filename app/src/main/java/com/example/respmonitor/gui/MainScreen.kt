@@ -1,7 +1,6 @@
 package com.example.respmonitor.gui
 
 import GyroSample
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -36,23 +35,21 @@ fun MainScreen(
     signalAnalyzer: SignalAnalyzer
 ) {
     val context = LocalContext.current
-
     val mlClassifier = remember { PositionClassifier(context) }
     val mlBuffer = remember { FloatCircularBuffer(600) }
-    val signalBuffer = remember { FloatCircularBuffer(3000) }
+    val signalBuffer = remember { FloatCircularBuffer(1500) }
 
-    var lastAccel by remember { mutableStateOf(AccelSample (timestampNs = 0L, x = 0f, y = 0f, z = 0f)) }
-
+    var lastAccel by remember { mutableStateOf(AccelSample(0L, 0f, 0f, 0f)) }
     var isPositionValid by remember { mutableStateOf(false) }
     var positionConfidence by remember { mutableFloatStateOf(0f) }
     var breathsPerMinute by remember { mutableStateOf<Float?>(null) }
     var isCalculating by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf("Initializing...") }
 
+    var invalidCounter by remember { mutableIntStateOf(0) }
+    val INVALID_THRESHOLD = 3
 
     DisposableEffect(gyroManager, accelManager) {
-        Log.d("MainScreen", "═══ Setting up sensors ═══")
-
         accelManager.onAccelSample = { sample ->
             lastAccel = sample
             accelInterpolator.onNewSample(sample)
@@ -86,8 +83,6 @@ fun MainScreen(
 
     LaunchedEffect(Unit) {
         delay(1000)
-
-
         while (isActive) {
             if (mlBuffer.isFull() && !isCalculating) {
                 isCalculating = true
@@ -97,41 +92,36 @@ fun MainScreen(
                         val data = mlBuffer.toFloatArray()
                         mlClassifier.classify(data)
                     } catch (e: Exception) {
-                        Log.e("MainScreen", "ML Error: ${e.message}", e)
                         null
                     }
                 }
 
                 mlResult?.let { result ->
-                    val wasValid = isPositionValid
-                    isPositionValid = result.label == "valid" && result.confidence > 0.7f
-                    positionConfidence = result.confidence
+                    val currentMlValid = result.label == "valid" && result.confidence > 0.7f
 
-                    Log.d("MainScreen", "═══════════════════════════════════════")
-                    Log.d("MainScreen", "ML RESULT:")
-                    Log.d("MainScreen", "  Label: ${result.label}")
-                    Log.d("MainScreen", "  Confidence: ${(result.confidence * 100).toInt()}%")
-                    Log.d("MainScreen", "  Valid score: ${String.format("%.4f", result.validScore)}")
-                    Log.d("MainScreen", "  Invalid score: ${String.format("%.4f", result.invalidScore)}")
-                    Log.d("MainScreen", "  Position Valid: $isPositionValid")
-                    Log.d("MainScreen", "═══════════════════════════════════════")
+                    if (currentMlValid) {
+                        invalidCounter = 0
+                        isPositionValid = true
+                        positionConfidence = result.confidence
+                    } else {
+                        invalidCounter++
+                        if (invalidCounter >= INVALID_THRESHOLD) {
+                            isPositionValid = false
+                            positionConfidence = result.confidence
+                            signalBuffer.clear()
+                            breathsPerMinute = null
+                        }
+                    }
 
                     statusMessage = if (isPositionValid) {
                         "Position correct - Measuring..."
                     } else {
                         "Please place phone on chest"
                     }
-
-                    if (wasValid && !isPositionValid) {
-                        signalBuffer.clear()
-                        breathsPerMinute = null
-                    }
                 }
-
                 isCalculating = false
             }
-
-            delay(2000)
+            delay(500)
         }
     }
 
@@ -143,7 +133,6 @@ fun MainScreen(
                     try {
                         signalAnalyzer.findRespiratoryRate(signalBuffer, 100f, 6f, 40f)
                     } catch (e: Exception) {
-                        Log.e("MainScreen", "BPM Error: ${e.message}", e)
                         null
                     }
                 }
@@ -152,14 +141,12 @@ fun MainScreen(
                 }
                 isCalculating = false
             }
-            delay(500)
+            delay(200)
         }
     }
 
-
     DrawGui(isPositionValid, positionConfidence, breathsPerMinute, statusMessage)
 }
-
 
 @Composable
 fun DrawGui(
@@ -169,49 +156,28 @@ fun DrawGui(
     statusMessage: String
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = if (isPositionValid)
-                    Color(0xFF4CAF50).copy(alpha = 0.2f)
-                else
-                    Color(0xFFF44336).copy(alpha = 0.2f)
+                containerColor = if (isPositionValid) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color(0xFFF44336).copy(alpha = 0.2f)
             ),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = if (isPositionValid) "✓ POSITION CORRECT" else "✗ INCORRECT POSITION",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isPositionValid) Color(0xFF2E7D32) else Color(0xFFC62828)
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Confidence: ${(positionConfidence * 100).toInt()}%",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-
+                Text(text = "Confidence: ${(positionConfidence * 100).toInt()}%", fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = statusMessage,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                Text(text = statusMessage, fontSize = 12.sp)
             }
         }
 
@@ -220,51 +186,30 @@ fun DrawGui(
         if (isPositionValid) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = breathsPerMinute?.let { "%.1f".format(it) } ?: "--",
                         fontSize = 64.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-
-                    Text(
-                        text = "breaths per minute",
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
+                    Text(text = "breaths per minute", fontSize = 16.sp)
                 }
             }
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text(
-                        text = "📱 How to Position:",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    Text("1. Lie down or sit comfortably", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("2. Place phone flat on your chest", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("3. Screen facing up", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("4. Keep still and breathe normally", fontSize = 14.sp)
+                    Text(text = "📱 How to Position:", fontWeight = FontWeight.Bold)
+                    Text("1. Lie down or sit comfortably")
+                    Text("2. Place phone flat on your chest")
+                    Text("3. Screen facing up")
+                    Text("4. Keep still and breathe normally")
                 }
             }
         }

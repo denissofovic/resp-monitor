@@ -1,7 +1,6 @@
 package com.example.respmonitor.processing
 
 import android.content.Context
-import android.util.Log
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -52,8 +51,6 @@ class PositionClassifier(context: Context) {
 
         val label = if (validScore > invalidScore) "valid" else "invalid"
         val confidence = maxOf(validScore, invalidScore)
-
-        Log.d("TFLite", "Rezultat: $label (Confidence: ${String.format("%.2f", confidence * 100)}%)")
 
         return ClassificationResult(label, confidence, validScore, invalidScore)
     }
