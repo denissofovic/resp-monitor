@@ -2,9 +2,11 @@ package com.example.respmonitor
 
 import GyroSample
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.example.respmonitor.gui.MainScreen
+import androidx.activity.enableEdgeToEdge
+import com.example.respmonitor.gui.screens.MainScreen
 import com.example.respmonitor.processing.ButterworthFilter
 import com.example.respmonitor.processing.Interpolator
 import com.example.respmonitor.processing.SignalAnalyzer
@@ -18,6 +20,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        enableEdgeToEdge()
 
         val gyroscopeManager = GyroscopeManager(this)
         val accelerometerManager = AccelerometerManager(this)
