@@ -57,6 +57,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("com.github.wendykierp:JTransforms:3.2")
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation(libs.androidx.compose.animation)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

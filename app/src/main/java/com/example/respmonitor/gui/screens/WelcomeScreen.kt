@@ -1,267 +1,231 @@
 package com.example.respmonitor.gui.screens
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.respmonitor.gui.components.AnimatedLogo
 
 @Composable
-fun WelcomeScreen(onStartClick: () -> Unit) {
-
-
-    val infiniteTransition = rememberInfiniteTransition(label = "welcome_animations")
-
-    val glowPulse by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_pulse"
-    )
-
-
-    Box(
+fun WelcomeScreen(
+    onStartClick: () -> Unit,
+    lastBreathsPerMinute: Float? = null,
+    onSaveToJournal: () -> Unit = {},
+    onDismiss: () -> Unit = {}
+) {
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(20.dp))
+        AnimatedLogo(
+            size = 60.dp,
+            iconSize = 36.dp,
+            showTitle = true,
+            titleText = "RespMonitor"
+        )
 
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerX = size.width / 2
-            val centerY = size.height * 0.3f
-
-            drawIntoCanvas { canvas ->
-                val paint = Paint().apply {
-                    shader = RadialGradientShader(
-                        center = Offset(centerX, centerY),
-                        radius = size.width * 0.6f,
-                        colors = listOf(
-                            Color(0xFF00BCD4).copy(alpha = 0.1f * glowPulse),
-                            Color.Transparent
-                        ),
-                        colorStops = listOf(0f, 1f)
-                    )
-                }
-                canvas.drawCircle(Offset(centerX, centerY), size.width * 0.6f, paint)
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Spacer(modifier = Modifier.height(30.dp))
-
-            AnimatedLogo(
-                size = 100.dp,
-                iconSize = 60.dp,
-                showTitle = true,
-                titleText = "RespMonitor"
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 16.dp),
-                thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
 
-                        Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "HOW TO USE",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    letterSpacing = 2.sp,
-                    modifier = Modifier.padding(bottom = 24.dp)
+        if (lastBreathsPerMinute != null) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
-
+            ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    MinimalistInstructionItem(
-                        number = "1",
-                        text = "Lie down or sit comfortably",
-                        progress = 0.2f
-                    )
-
-                    MinimalistInstructionItem(
-                        number = "2",
-                        text = "Place phone flat on chest",
-                        progress = 0.4f
-                    )
-
-                    MinimalistInstructionItem(
-                        number = "3",
-                        text = "Screen facing up",
-                        progress = 0.6f
-                    )
-
-                    MinimalistInstructionItem(
-                        number = "4",
-                        text = "Keep still, breathe normally",
-                        progress = 0.8f
-                    )
-
-                    MinimalistInstructionItem(
-                        number = "5",
-                        text = "Wait for position detection",
-                        progress = 1.0f
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(72.dp))
-
-
-
-            Button(
-                onClick = onStartClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00BCD4),
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 8.dp,
-                    pressedElevation = 12.dp
-                )
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    modifier = Modifier.padding(24.dp)
                 ) {
                     Text(
-                        text = "Start",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
+                        text = "Recent measurment",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00BCD4),
+                        letterSpacing = 1.5.sp
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
 
+                    Row(
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text(
+                            text = String.format("%.1f", lastBreathsPerMinute),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "breaths per minute",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Do you want to save this measurement to your Journal?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Discard")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = onSaveToJournal,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF00BCD4),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Save")
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        ElevatedCard(
+            onClick = onStartClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Track your respiratory rate",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Measuring your breathing can give you an understanding of your body's wellbeing. Tap to start.",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 20.sp
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Start measurement",
+                    tint = Color(0xFF00BCD4),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "Instructions",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                InstructionRow("1", "Lie down comfortably")
+                InstructionRow("2", "Place phone flat on stomach")
+                InstructionRow("3", "Screen facing up")
+                InstructionRow("4", "Keep still, breathe normally")
+                InstructionRow("5", "Wait for measurements")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun MinimalistInstructionItem(
-    number: String,
-    text: String,
-    progress: Float
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "line_pulse")
-    val linePulse by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(28.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.size(8.dp)) {
-                    drawCircle(
-                        color = Color(0xFF00BCD4).copy(alpha = 0.3f * linePulse),
-                        radius = 10.dp.toPx()
-                    )
-                    drawCircle(
-                        color = Color(0xFF00BCD4),
-                        radius = 4.dp.toPx()
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-
-            Text(
-                text = text,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
-                lineHeight = 22.sp,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-
-        Spacer(modifier = Modifier.height(12.dp))
-
+private fun InstructionRow(number: String, text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .padding(start = 44.dp)
+                .size(24.dp)
+                .background(Color(0xFF00BCD4).copy(alpha = 0.15f), CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color.Gray.copy(alpha = 0.1f))
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress * linePulse)
-                    .height(1.dp)
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF00BCD4).copy(alpha = 0.3f),
-                                Color(0xFF00BCD4)
-                            )
-                        )
-                    )
+            Text(
+                text = number,
+                color = Color(0xFF00BCD4),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
         }
+
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        )
     }
 }

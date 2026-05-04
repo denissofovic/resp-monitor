@@ -1,8 +1,24 @@
 package com.example.respmonitor.gui.screens
 
 import GyroSample
+import android.util.Log
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.respmonitor.gui.Screen
+import com.example.respmonitor.gui.viewmodel.MonitoringViewModel
 import com.example.respmonitor.processing.ButterworthFilter
 import com.example.respmonitor.processing.Interpolator
 import com.example.respmonitor.processing.PositionClassifier
@@ -18,12 +34,19 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MainScreen(gyroManager: GyroscopeManager, accelManager: AccelerometerManager, gyroInterpolator: Interpolator<GyroSample>, accelInterpolator: Interpolator<AccelSample>, filterPitch: ButterworthFilter, signalAnalyzer: SignalAnalyzer) {
-    var hasStarted by remember { mutableStateOf(false) }
+fun MainScreen(
+    gyroManager: GyroscopeManager,
+    accelManager: AccelerometerManager,
+    gyroInterpolator: Interpolator<GyroSample>,
+    accelInterpolator: Interpolator<AccelSample>,
+    filterPitch: ButterworthFilter,
+    signalAnalyzer: SignalAnalyzer,
+    viewModel: MonitoringViewModel = viewModel()
+) {
+    var selectedTab by remember { mutableStateOf(Screen.Home.route) }
+    var isMonitoring by remember { mutableStateOf(false) }
 
-    if (!hasStarted) {
-        WelcomeScreen(onStartClick = { hasStarted = true })
-    } else {
+    if (isMonitoring) {
         val context = LocalContext.current
         val mlClassifier = remember { PositionClassifier(context) }
         val mlBuffer = remember { FloatCircularBuffer(600) }
@@ -34,39 +57,24 @@ fun MainScreen(gyroManager: GyroscopeManager, accelManager: AccelerometerManager
         var breathsPerMinute by remember { mutableStateOf<Float?>(null) }
         var isCalculating by remember { mutableStateOf(false) }
         var statusMessage by remember { mutableStateOf("Validating position...") }
-
         var invalidCounter by remember { mutableIntStateOf(0) }
-        val INVALID_THRESHOLD = 3
+        val invalidThreshold = 3
 
         DisposableEffect(gyroManager, accelManager) {
             accelManager.onAccelSample = { sample ->
                 lastAccel = sample
                 accelInterpolator.onNewSample(sample)
             }
-
             gyroManager.onGyroSample = { gyroInterpolator.onNewSample(it) }
-
             gyroInterpolator.onInterpolatedSample = { g ->
                 val filteredPitch = filterPitch.process(g.pitch)
-                mlBuffer.add(g.pitch)
-                mlBuffer.add(g.roll)
-                mlBuffer.add(g.yaw)
-                mlBuffer.add(lastAccel.x)
-                mlBuffer.add(lastAccel.y)
-                mlBuffer.add(lastAccel.z)
-
-                if (isPositionValid) {
-                    signalBuffer.add(filteredPitch)
-                }
+                mlBuffer.add(g.pitch); mlBuffer.add(g.roll); mlBuffer.add(g.yaw)
+                mlBuffer.add(lastAccel.x); mlBuffer.add(lastAccel.y); mlBuffer.add(lastAccel.z)
+                if (isPositionValid) { signalBuffer.add(filteredPitch) }
             }
-
-            accelManager.start()
-            gyroManager.start()
-
+            accelManager.start(); gyroManager.start()
             onDispose {
-                gyroManager.stop()
-                accelManager.stop()
-                mlClassifier.close()
+                gyroManager.stop(); accelManager.stop(); mlClassifier.close()
             }
         }
 
@@ -75,35 +83,24 @@ fun MainScreen(gyroManager: GyroscopeManager, accelManager: AccelerometerManager
             while (isActive) {
                 if (mlBuffer.isFull() && !isCalculating) {
                     isCalculating = true
-
                     val mlResult = withContext(Dispatchers.Default) {
-                        try {
-                            val data = mlBuffer.toFloatArray()
-                            mlClassifier.classify(data)
-                        } catch (e: Exception) {
-                            null
-                        }
+                        try { mlClassifier.classify(mlBuffer.toFloatArray()) } catch (e: Exception) { null }
                     }
-
                     mlResult?.let { result ->
                         val wasValid = isPositionValid
                         val currentMlValid = result.label == "valid" && result.confidence > 0.7f
-
                         if (currentMlValid) {
-                            invalidCounter = 0
-                            isPositionValid = true
-                            statusMessage = "Position correct - Measuring..."
-
+                            invalidCounter = 0; isPositionValid = true
+                            statusMessage = "Position correct"
                         } else {
                             invalidCounter++
-                            if (invalidCounter >= INVALID_THRESHOLD) {
+                            if (invalidCounter >= invalidThreshold) {
                                 if (wasValid) { HapticFeedback.vibrateDouble(context) }
                                 isPositionValid = false
                                 signalBuffer.clear()
                                 breathsPerMinute = null
                             }
-
-                            statusMessage = "Hold phone to your chest now"
+                            statusMessage = "Please hold your phone correctly"
                         }
                     }
                     isCalculating = false
@@ -117,15 +114,9 @@ fun MainScreen(gyroManager: GyroscopeManager, accelManager: AccelerometerManager
                 if (isPositionValid && signalBuffer.isFull() && !isCalculating) {
                     isCalculating = true
                     val result = withContext(Dispatchers.Default) {
-                        try {
-                            signalAnalyzer.findRespiratoryRate(signalBuffer, 100f, 6f, 40f)
-                        } catch (e: Exception) {
-                            null
-                        }
+                        try { signalAnalyzer.findRespiratoryRate(signalBuffer, 100f, 6f, 40f) } catch (e: Exception) { null }
                     }
-                    result?.let { bpm ->
-                        breathsPerMinute = signalAnalyzer.calculateEMA(bpm, breathsPerMinute ?: 0f)
-                    }
+                    result?.let { bpm -> breathsPerMinute = signalAnalyzer.calculateEMA(bpm, breathsPerMinute ?: 0f) }
                     isCalculating = false
                 }
                 delay(200)
@@ -136,11 +127,52 @@ fun MainScreen(gyroManager: GyroscopeManager, accelManager: AccelerometerManager
             isPositionValid = isPositionValid,
             breathsPerMinute = breathsPerMinute,
             statusMessage = statusMessage,
-            onBackClick = { hasStarted = false }
+            onBackClick = {
+                breathsPerMinute?.let { viewModel.updateLastMeasurement(it) }
+                isMonitoring = false
+            },
+            viewModel = viewModel
         )
 
+    } else {
+        Scaffold(
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
+                    val items = listOf(Screen.Home, Screen.Journal)
+                    items.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = screen.label) },
+                            label = { Text(screen.label) },
+                            selected = selectedTab == screen.route,
+                            onClick = { selectedTab = screen.route },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color(0xFF00BCD4),
+                                indicatorColor = Color(0xFF00BCD4).copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                when (selectedTab) {
+                    Screen.Home.route -> WelcomeScreen(
+                        onStartClick = { isMonitoring = true },
+                        lastBreathsPerMinute = viewModel.lastMeasurement,
+                        onSaveToJournal = {
+                            Log.d("DATABASE","Saved to database: ${viewModel.lastMeasurement}")
+                            viewModel.clearMeasurement()
+                        },
+                        onDismiss = {
+                            viewModel.clearMeasurement()
+                        }
+                    )
+                    Screen.Journal.route -> JournalScreen()
+                }
+            }
+        }
     }
-
-
 }
-

@@ -1,132 +1,174 @@
 package com.example.respmonitor.gui.screens
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.respmonitor.gui.components.*
+import com.example.respmonitor.gui.viewmodel.MonitoringViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+
 
 @Composable
 fun MonitoringScreen(
     isPositionValid: Boolean,
     breathsPerMinute: Float?,
     statusMessage: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: MonitoringViewModel = viewModel()
 ) {
-
-    val infiniteTransition = rememberInfiniteTransition(label = "monitoring_animations")
-    val glowPulse by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_pulse"
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
-
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerX = size.width / 2
-            val centerY = size.height * 0.3f
-
-            drawIntoCanvas { canvas ->
-                val paint = Paint().apply {
-                    shader = RadialGradientShader(
-                        center = Offset(centerX, centerY),
-                        radius = size.width * 0.6f,
-                        colors = listOf(
-                            Color(0xFF00BCD4).copy(alpha = 0.1f * glowPulse),
-                            Color.Transparent
-                        ),
-                        colorStops = listOf(0f, 1f)
-                    )
-                }
-                canvas.drawCircle(Offset(centerX, centerY), size.width * 0.6f, paint)
-            }
-        }
-
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(24.dp)
+                .blur(radius = if (!isPositionValid) 15.dp else 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(30.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(
+                    onClick = {
+                        breathsPerMinute?.let {
+                            viewModel.updateLastMeasurement(it)
+                        }
+                        onBackClick()
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close"
+                    )
+                }
 
+                Text(
+                    "BREATHING",
+                    style = MaterialTheme.typography.labelLarge,
+                    letterSpacing = 2.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
 
-            AnimatedLogo(
-                size = 100.dp,
-                iconSize = 60.dp,
-                showTitle = true,
-                titleText = "RespMonitor"
-            )
+                Box(modifier = Modifier.size(48.dp))
+            }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 16.dp),
-                thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+            Spacer(modifier = Modifier.weight(1f))
 
+            BreathingRateGauge(breathsPerMinute = breathsPerMinute)
+
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        AnimatedVisibility(
+            visible = !isPositionValid,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (isPositionValid) {
-                    BreathingRateGauge(breathsPerMinute = breathsPerMinute)
-                } else {
-                    PositionStatusMinimal(statusMessage = statusMessage, onBackClick = onBackClick)
+                ElevatedCard(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = Color(0xFF00BCD4).copy(alpha = 0.8f),
+                            modifier = Modifier.size(64.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(28.dp))
+
+                        Text(
+                            text = "Cannot detect breathing",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = statusMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(40.dp))
+
+                        TextButton(
+                            onClick = onBackClick,
+                            modifier = Modifier.height(48.dp),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = Color(0xFF00BCD4)
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Back to Home",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 0.2.sp
+                                )
+                            }
+                        }
+                    }
                 }
             }
-
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00BCD4),
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 8.dp,
-                    pressedElevation = 12.dp
-                )
-            ) {
-                Text(
-                    text = "Back",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
