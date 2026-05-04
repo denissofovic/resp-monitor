@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -59,8 +60,18 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
     implementation(libs.androidx.compose.animation)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
+
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.runtime)
+    add("ksp", libs.androidx.room.compiler)
+
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
+
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

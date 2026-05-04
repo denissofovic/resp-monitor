@@ -1,7 +1,9 @@
 package com.example.respmonitor.gui.screens
 
 import GyroSample
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -16,8 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.respmonitor.gui.Screen
+import com.example.respmonitor.database.JournalEntry
+import com.example.respmonitor.database.RespDatabase
+import com.example.respmonitor.gui.navigation.Screen
+import com.example.respmonitor.gui.viewmodel.JournalViewModel
 import com.example.respmonitor.gui.viewmodel.MonitoringViewModel
 import com.example.respmonitor.processing.ButterworthFilter
 import com.example.respmonitor.processing.Interpolator
@@ -31,8 +37,10 @@ import com.example.respmonitor.util.HapticFeedback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainScreen(
     gyroManager: GyroscopeManager,
@@ -45,6 +53,20 @@ fun MainScreen(
 ) {
     var selectedTab by remember { mutableStateOf(Screen.Home.route) }
     var isMonitoring by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val database = remember { RespDatabase.getDatabase(context) }
+    val dao = database.journalDao()
+
+    val journalViewModel: JournalViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return JournalViewModel(dao) as T
+            }
+        }
+    )
+
+    val entries by journalViewModel.entries.collectAsStateWithLifecycle()
 
     if (isMonitoring) {
         val context = LocalContext.current
@@ -59,6 +81,7 @@ fun MainScreen(
         var statusMessage by remember { mutableStateOf("Validating position...") }
         var invalidCounter by remember { mutableIntStateOf(0) }
         val invalidThreshold = 3
+
 
         DisposableEffect(gyroManager, accelManager) {
             accelManager.onAccelSample = { sample ->
@@ -159,18 +182,63 @@ fun MainScreen(
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 when (selectedTab) {
-                    Screen.Home.route -> WelcomeScreen(
-                        onStartClick = { isMonitoring = true },
-                        lastBreathsPerMinute = viewModel.lastMeasurement,
-                        onSaveToJournal = {
-                            Log.d("DATABASE","Saved to database: ${viewModel.lastMeasurement}")
-                            viewModel.clearMeasurement()
-                        },
-                        onDismiss = {
-                            viewModel.clearMeasurement()
-                        }
-                    )
-                    Screen.Journal.route -> JournalScreen()
+                    Screen.Home.route -> {
+                        val context = LocalContext.current
+
+                        WelcomeScreen(
+                            onStartClick = { isMonitoring = true },
+                            lastBreathsPerMinute = viewModel.lastMeasurement,
+                            onSaveToJournal = { customNote ->
+                                val current = java.time.LocalDateTime.now()
+                                val formatterDate = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy.")
+                                val formatterTime = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+
+                                val dateNow = current.format(formatterDate)
+                                val timeNow = current.format(formatterTime)
+
+                                val entry = JournalEntry(
+                                    date = dateNow,
+                                    time = timeNow,
+                                    breathsPerMinute = viewModel.lastMeasurement ?: 0f,
+                                    note = customNote.ifBlank { "I was out of breath to think of anything" }
+                                )
+
+                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                                    try {
+                                        dao.insertEntry(entry)
+                                        Log.d("DATABASE", "Saved to database: $entry")
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                                viewModel.clearMeasurement()
+                            },
+                            onDismiss = {
+                                viewModel.clearMeasurement()
+                            },
+                            onSeeAllClick = {
+                                selectedTab = Screen.Journal.route
+                            },
+                            entries = entries
+                        )
+                    }
+
+                    Screen.Journal.route -> {
+                        val context = LocalContext.current
+                        val database = remember { RespDatabase.getDatabase(context) }
+                        val dao = database.journalDao()
+
+                        val journalViewModel: JournalViewModel = viewModel(
+                            factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                    return JournalViewModel(dao) as T
+                                }
+                            }
+                        )
+
+                        JournalScreen(viewModel = journalViewModel)
+                    }
+
                 }
             }
         }

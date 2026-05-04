@@ -10,6 +10,11 @@ kotlin = "2.0.21"
 composeBom = "2024.09.00"
 litert = "2.1.1"
 animation = "1.11.0"
+ksp = "2.0.21-1.0.25" # Odgovarajuća KSP verzija za Kotlin 2.0.21
+room = "2.7.0-alpha11"
+material3 = "1.4.0"
+runtime = "1.11.0"
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,7 +34,15 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 androidx-compose-animation = { group = "androidx.compose.animation", name = "animation", version.ref = "animation" }
 
+# Sve tri moraju koristiti istu "room" verziju iz gornjeg bloka
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" } # Novi KSP plugin
 

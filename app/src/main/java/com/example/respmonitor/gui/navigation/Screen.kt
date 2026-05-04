@@ -1,4 +1,4 @@
-package com.example.respmonitor.gui
+package com.example.respmonitor.gui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange

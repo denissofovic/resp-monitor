@@ -3,11 +3,11 @@ package com.example.respmonitor.gui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,15 +16,22 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.respmonitor.database.JournalEntry
 import com.example.respmonitor.gui.components.AnimatedLogo
+import com.example.respmonitor.gui.components.BreathingStatsCard
+import com.example.respmonitor.gui.components.InstructionRow
 
 @Composable
 fun WelcomeScreen(
     onStartClick: () -> Unit,
     lastBreathsPerMinute: Float? = null,
-    onSaveToJournal: () -> Unit = {},
-    onDismiss: () -> Unit = {}
+    onSaveToJournal: (String) -> Unit = {},
+    onDismiss: () -> Unit = {},
+    entries: List<JournalEntry> = emptyList(),
+    onSeeAllClick: () -> Unit = {}
 ) {
+    var showInstructionsDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -34,6 +41,7 @@ fun WelcomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(20.dp))
+
         AnimatedLogo(
             size = 60.dp,
             iconSize = 36.dp,
@@ -41,10 +49,25 @@ fun WelcomeScreen(
             titleText = "RespMonitor"
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(
+                onClick = { showInstructionsDialog = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Instructions",
+                    tint = Color.Gray
+                )
+            }
+        }
 
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (lastBreathsPerMinute != null) {
+            var noteText by remember { mutableStateOf("") }
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -56,7 +79,7 @@ fun WelcomeScreen(
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Text(
-                        text = "Recent measurment",
+                        text = "Recent measurement",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF00BCD4),
@@ -93,6 +116,15 @@ fun WelcomeScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    OutlinedTextField(
+                        value = noteText,
+                        onValueChange = { noteText = it },
+                        label = { Text("Enter a note...") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -109,7 +141,10 @@ fun WelcomeScreen(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Button(
-                            onClick = onSaveToJournal,
+                            onClick = {
+                                onSaveToJournal(noteText)
+                                noteText = ""
+                            },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF00BCD4),
@@ -166,66 +201,62 @@ fun WelcomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = "Instructions",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                InstructionRow("1", "Lie down comfortably")
-                InstructionRow("2", "Place phone flat on stomach")
-                InstructionRow("3", "Screen facing up")
-                InstructionRow("4", "Keep still, breathe normally")
-                InstructionRow("5", "Wait for measurements")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-
+        BreathingStatsCard(
+            entries = entries,
+            onSeeAllClick = onSeeAllClick
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
     }
-}
 
-@Composable
-private fun InstructionRow(number: String, text: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .background(Color(0xFF00BCD4).copy(alpha = 0.15f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = number,
-                color = Color(0xFF00BCD4),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+    if (showInstructionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showInstructionsDialog = false },
+            title = {
+                Text(
+                    text = "How to Measure",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    val steps = listOf(
+                        "Lie down comfortably on your back.",
+                        "Place your phone flat on your stomach, below the ribcage.",
+                        "Ensure the screen is facing up.",
+                        "Keep still and breathe normally.",
+                        "The measurement starts automatically. Wait for results."
+                    )
 
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = text,
-            fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    steps.forEachIndexed { index, instruction ->
+                        InstructionRow(
+                            number = (index + 1).toString(),
+                            text = instruction,
+                            isLast = index == steps.size - 1
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showInstructionsDialog = false }
+                ) {
+                    Text(
+                        text = "Got it",
+                        color = Color(0xFF00BCD4),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            shape = RoundedCornerShape(28.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         )
     }
 }
+
+
