@@ -178,7 +178,7 @@ fun JournalScreen(viewModel: JournalViewModel) {
                         breathsPerMinute = bpm,
                         time = time,
                         date = date,
-                        note = note.ifBlank { "Manual entry" }
+                        note = note.ifBlank { "I was out of breath to think of anything" }
                     )
                 )
             }

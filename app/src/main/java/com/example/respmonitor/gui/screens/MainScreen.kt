@@ -161,8 +161,8 @@ fun MainScreen(
         Scaffold(
             bottomBar = {
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp
                 ) {
                     val items = listOf(Screen.Home, Screen.Journal)
                     items.forEach { screen ->

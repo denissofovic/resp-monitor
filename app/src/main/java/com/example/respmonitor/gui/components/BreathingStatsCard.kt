@@ -41,8 +41,8 @@ fun BreathingStatsCard(
     } else {
         0f
     }
-    val maxBpm = if (entries.isNotEmpty()) entries.map { it.breathsPerMinute }.maxOrNull() ?: 0f else 0f
-    val minBpm = if (entries.isNotEmpty()) entries.map { it.breathsPerMinute }.minOrNull() ?: 0f else 0f
+    val maxBpm = if (entries.isNotEmpty()) entries.maxOfOrNull { it.breathsPerMinute } ?: 0f else 0f
+    val minBpm = if (entries.isNotEmpty()) entries.minOfOrNull { it.breathsPerMinute } ?: 0f else 0f
 
     LaunchedEffect(entries) {
         Log.d("BreathingStats", "Broj unosa: ${entries.size}")
