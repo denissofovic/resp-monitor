@@ -44,8 +44,8 @@ class PositionClassifier(context: Context) {
         }
 
 
-        val invalidScore = outputBuffer[0][0] // Changed indexes, seems right
-        val validScore = outputBuffer[0][1] // Changed indexes, seems right
+        val invalidScore = outputBuffer[0][0]
+        val validScore = outputBuffer[0][1]
 
 
 
