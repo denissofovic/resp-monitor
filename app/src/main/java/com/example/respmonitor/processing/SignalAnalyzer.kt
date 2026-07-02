@@ -54,24 +54,24 @@ class SignalAnalyzer {
 
         if (peakIndex == -1) return null
 
-        val frequency = peakIndex * samplingRate / fftSize
+        if (peakIndex <= minIndex || peakIndex >= maxIndex) {
+            return peakIndex * samplingRate / fftSize * 60f
+        }
+
+        // Parabolička interpolacija vrha na log-power skali.
+        val alpha = ln(powerSpectrum[peakIndex - 1] + 1e-12f)
+        val beta  = ln(powerSpectrum[peakIndex]     + 1e-12f)
+        val gamma = ln(powerSpectrum[peakIndex + 1] + 1e-12f)
+
+        val denom = alpha - 2f * beta + gamma
+        val delta = if (denom != 0f) 0.5f * (alpha - gamma) / denom else 0f
+
+        val interpolatedIndex = peakIndex + delta
+        val frequency = interpolatedIndex * samplingRate / fftSize
 
         return frequency * 60f
     }
 
-
-    // ZA SADA NIJE POTREBNA - MIGHT BE DEPRECATED
-    fun validateChange(lastValidBpm: Float, lastUpdateTime: Long, newBpm: Float): Boolean {
-        if (lastValidBpm == 0f) return true
-
-        val currentTime = System.currentTimeMillis()
-        val timeDelta = currentTime - lastUpdateTime
-
-        if (timeDelta >= 2000) return true
-
-        val bpmChange = abs(newBpm - lastValidBpm)
-        return bpmChange <= 10f
-    }
 
     fun calculateEMA(bpm : Float, currentBreaths : Float) : Float{
         val alpha = if (currentBreaths == 0f) {
