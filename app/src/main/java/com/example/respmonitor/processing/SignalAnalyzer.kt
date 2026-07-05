@@ -1,5 +1,6 @@
 package com.example.respmonitor.processing
 
+import android.util.Log
 import com.example.respmonitor.util.FloatCircularBuffer
 import org.jtransforms.fft.FloatFFT_1D
 import kotlin.math.*
@@ -52,13 +53,14 @@ class SignalAnalyzer {
             }
         }
 
+
         if (peakIndex == -1) return null
+
 
         if (peakIndex <= minIndex || peakIndex >= maxIndex) {
             return peakIndex * samplingRate / fftSize * 60f
         }
 
-        // Parabolička interpolacija vrha na log-power skali.
         val alpha = ln(powerSpectrum[peakIndex - 1] + 1e-12f)
         val beta  = ln(powerSpectrum[peakIndex]     + 1e-12f)
         val gamma = ln(powerSpectrum[peakIndex + 1] + 1e-12f)
