@@ -80,7 +80,9 @@ fun MainScreen(
         var isCalculating by remember { mutableStateOf(false) }
         var statusMessage by remember { mutableStateOf("Validating position...") }
         var invalidCounter by remember { mutableIntStateOf(0) }
-        val invalidThreshold = 3
+        val invalidThreshold = 4
+        var validCounter by remember { mutableIntStateOf(0) }   // NOVO
+        val validThreshold = 2
 
 
         DisposableEffect(gyroManager, accelManager) {
@@ -112,18 +114,28 @@ fun MainScreen(
                     mlResult?.let { result ->
                         val wasValid = isPositionValid
                         val currentMlValid = result.label == "valid" && result.confidence > 0.7f
+
                         if (currentMlValid) {
-                            invalidCounter = 0; isPositionValid = true
-                            statusMessage = "Position correct"
+                            validCounter++
+                            invalidCounter = 0
+                            if (validCounter >= validThreshold) {
+                                isPositionValid = true
+                                statusMessage = "Position correct"
+                            } else if (!wasValid) {
+                                statusMessage = "Validating position..."
+                            }
                         } else {
                             invalidCounter++
+                            validCounter = 0
                             if (invalidCounter >= invalidThreshold) {
                                 if (wasValid) { HapticFeedback.vibrateDouble(context) }
                                 isPositionValid = false
                                 signalBuffer.clear()
                                 breathsPerMinute = null
+                                statusMessage = "Please hold your phone correctly. Try to move it up and down your abdomen to adjust it properly"
+                            } else if (!wasValid) {
+                                statusMessage = "Validating position..."
                             }
-                            statusMessage = "Please hold your phone correctly"
                         }
                     }
                     isCalculating = false
