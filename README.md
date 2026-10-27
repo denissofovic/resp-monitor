@@ -28,7 +28,6 @@ Detaljan opis metodologije, implementacije i rezultata dostupan je u pratećem d
 
 📄 [`docs/diplomski_rad.pdf`](docs/diplomski_rad_denis_sofovic.pdf)
 
-*(putanju prilagodi stvarnom nazivu/lokaciji fajla u repozitoriju)*
 
 ## Instalacija
 
